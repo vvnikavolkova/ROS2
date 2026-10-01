@@ -7,15 +7,43 @@ from course_lab.world import Area, Sample, Decision
 from course_lab.navigation import drive_to, raster
 from course_lab.probe import RectangleProbe
 
+
+from course_lab.world import Area, Sample, Decision, Outcome
+from course_lab.navigation import drive_to, raster
+from course_lab.probe import RectangleProbe
+
+
 class Mission:
     def __init__(self, area: Area):
         self.area = area
         self.waypoints = raster(area)
         self.index = 0
+        self.probe = None
 
     def step(self, sample: Sample) -> Decision:
-        # TODO M1: follow raster; on green INSIDE area instantiate RectangleProbe.
-        # Probe already measures boundaries. Delegate future samples to probe.step().
-        # Basic feedback and all safety/failure policy are supplied by the adapter.
-        # Starter is intentionally stopped, not a working submission.
-        return Decision()
+        if self.probe is not None:
+            return self.probe.step(sample)
+
+        if sample.green and self.area.contains(sample.x, sample.y):
+            self.probe = RectangleProbe(self.area, sample)
+            return Decision(detected=True)
+
+        if self.index >= len(self.waypoints):
+            return Decision(
+                outcome=Outcome("absent")
+            )
+
+        target = self.waypoints[self.index]
+        v, w, reached = drive_to(sample, target)
+        if reached:
+            self.index += 1
+
+            if self.index >= len(self.waypoints):
+                return Decision(
+                    outcome=Outcome("absent")
+                )
+
+            return Decision()
+        return Decision(v=v, w=w)
+
+
